@@ -27,6 +27,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,11 +65,13 @@ public class CreateQuestionActivity extends AppCompatActivity implements View.On
     private TextView selectQuestionLanguages;
     private Spinner propertySpinner;
     private ArrayAdapter<QuestionPropertyDef> propertyAdapter;
+    private List<EditText> optionsList = new ArrayList<>();
 
     private QuestionPropertyDef questionPropertyDef;
     private List<EditText> allListOptions;
     private boolean checkSelected = false;
     private int listOptionsCounter = 0;
+    private int multipleOptionsCounter = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +91,9 @@ public class CreateQuestionActivity extends AppCompatActivity implements View.On
 
         final ArrayList<QuestionPropertyDef> quesPropDefs = DatabaseHelper.QUESTION_PROPERTY_DEF_TABLE.getAll();
 
+        QuestionPropertyDef multiChoiceProperty = new QuestionPropertyDef();
+        multiChoiceProperty.setName(Constants.MULTICHOICE);
+        quesPropDefs.add(multiChoiceProperty);
 
         propertySpinner = findViewById(R.id.question_property_spinner);
         propertyAdapter = new ArrayAdapter<QuestionPropertyDef>(this,
@@ -231,6 +237,7 @@ public class CreateQuestionActivity extends AppCompatActivity implements View.On
         return false;
     }
 
+
     private class QuestionLanguageAdapter extends ArrayAdapter<Language> {
         public QuestionLanguageAdapter(Context context, ArrayList<Language> quesLanguages) {
             super(context, 0, quesLanguages);
@@ -264,19 +271,46 @@ public class CreateQuestionActivity extends AppCompatActivity implements View.On
             buttonAdd.setImageResource(R.drawable.ic_add_black_24dp);
             buttonAdd.getBackground().setColorFilter(Color.LTGRAY, PorterDuff.Mode.MULTIPLY);
 
+            //Add button for Multiple Choice answer
+            final ImageButton multipleChoiceButton = new ImageButton(getApplicationContext());
+            multipleChoiceButton.setMinimumHeight(50);
+            multipleChoiceButton.setMinimumWidth(50);
+            multipleChoiceButton.setRight(10);
+            multipleChoiceButton.setImageResource(R.drawable.ic_add_black_24dp);
+            multipleChoiceButton.getBackground().setColorFilter(Color.LTGRAY, PorterDuff.Mode.MULTIPLY);
+
 
             buttonAdd.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     EditText editText = new EditText(getApplicationContext());
+                    EditText copyText = editText;
+                    optionsList.add(copyText);
                     listOptionsCounter += 1;
                     editText.setTextColor(Color.BLACK);
                     editText.setHint("Type Option " + listOptionsCounter);
                     editText.setHintTextColor(Color.GRAY);
-                    linearView.addView(editText);
+                    linearView.addView(copyText);
                     allListOptions.add(editText);
                 }
             });
+
+
+            multipleChoiceButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                  EditText editText = new EditText(getApplicationContext());
+                  EditText copyText = editText;
+                  optionsList.add(copyText);
+                  multipleOptionsCounter+=1;
+                  editText.setTextColor(Color.BLACK);
+                  editText.setHint("Type Multiple option " + multipleOptionsCounter);
+                  editText.setHintTextColor(Color.GRAY);
+                  linearView.addView(copyText);
+                  allListOptions.add(editText);
+                }
+            });
+
 
             final CheckBox languageSelect = convertView.findViewById(R.id.entry_list_select_box);
             languageSelect.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -286,19 +320,34 @@ public class CreateQuestionActivity extends AppCompatActivity implements View.On
                     //final String questionType = propertyDef.getName();
                     question.setType(questionPropertyDef.getName());
                     if (isChecked) {
-                        if (question.getType().equals(Constants.LIST)) {
-                            buttonAdd.setVisibility(View.VISIBLE);
+                        if (question.getType().equals(Constants.LIST) || question.getType().equals(Constants.MULTICHOICE)) {
                             linearView.addView(questionText, params);
-                            linearView.addView(buttonAdd);
+
+                            if(question.getType().equals(Constants.LIST)) {
+                              linearView.addView(buttonAdd);
+                              buttonAdd.setVisibility(View.VISIBLE);
+                            }
+                            if(question.getType().equals(Constants.MULTICHOICE)) {
+                              linearView.addView(multipleChoiceButton);
+                              multipleChoiceButton.setVisibility(View.VISIBLE);
+                            }
+
                             questionTexts.put(language, questionText);
-                        } else {
+                        }
+                        else {
                             linearView.addView(questionText, params);
                             questionTexts.put(language, questionText);
                         }
-                    } else {
+                    }
+                    else {
+                        buttonTextDisappear(buttonAdd, linearView);
+                        buttonTextDisappear(multipleChoiceButton, linearView);
                         linearView.removeView(questionText);
                         listViewParams.height -= 100;
                         questionTexts.remove(language);
+                        removeOptions(optionsList, linearView);
+                        listOptionsCounter = 0;
+                        multipleOptionsCounter = 0;
                     }
                 }
             });
@@ -311,6 +360,23 @@ public class CreateQuestionActivity extends AppCompatActivity implements View.On
 
         }
 
+    }
+
+    /**
+     * Helper function that helper remove button and text field
+     */
+    public void buttonTextDisappear(ImageButton button, LinearLayout linearView) {
+      button.setVisibility(View.GONE);
+      linearView.removeView(button);
+
+    }
+
+    public void removeOptions(List<EditText> optionsList, LinearLayout linearView) {
+      for (int idx = 0; idx < optionsList.size(); idx++) {
+        EditText option = optionsList.get(idx);
+        linearView.removeView(option);
+      }
+      optionsList.clear();
     }
 
 
